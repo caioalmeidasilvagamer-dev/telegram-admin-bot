@@ -3,6 +3,7 @@ from bot.config import BOT_TOKEN
 from bot.database import init_db
 from bot.handlers.welcome import welcome_handler
 from bot.handlers.admin import warn_handler, ban_handler
+from bot.handlers.moderation import anti_flood
 from loguru import logger
 
 async def post_init(app):
@@ -19,6 +20,7 @@ def main():
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_handler))
     app.add_handler(CommandHandler("warn", warn_handler))
     app.add_handler(CommandHandler("ban", ban_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anti_flood))
 
     logger.info("Bot iniciado.")
     app.run_polling()

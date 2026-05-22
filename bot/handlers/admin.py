@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
+from telegram.ext import ContextTypes
 from bot.database import upsert_user, add_warn, log_action
 from bot.utils.helpers import admin_only
 from loguru import logger
