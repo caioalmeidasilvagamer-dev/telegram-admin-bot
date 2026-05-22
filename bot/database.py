@@ -57,3 +57,11 @@ async def log_action(action: str, admin_id: int, target_id: int, reason: str = "
             (action, admin_id, target_id, reason)
         )
         await db.commit()
+
+async def set_banned(user_id: int, banned: bool):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET is_banned = ? WHERE user_id = ?",
+            (1 if banned else 0, user_id)
+        )
+        await db.commit()

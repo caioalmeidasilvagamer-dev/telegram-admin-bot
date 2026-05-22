@@ -1,6 +1,6 @@
 from telegram import Update, ChatPermissions
 from telegram.ext import ContextTypes
-from bot.database import upsert_user, add_warn, log_action
+from bot.database import upsert_user, add_warn, log_action, get_user, set_banned
 from bot.utils.helpers import admin_only
 from loguru import logger
 from datetime import datetime
@@ -24,6 +24,7 @@ async def warn_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🔨 {target.first_name} foi banido por atingir 3 advertências.")
         await log_action("auto_ban", update.effective_user.id, target.id, "3 warns")
         logger.info(f"Auto-ban: {target.first_name} ({target.id})")
+        await set_banned(user_id=target.id, banned=True)
 
 @admin_only
 async def ban_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,6 +40,7 @@ async def ban_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"🔨 {target.first_name} foi banido. Motivo: {reason}")
     logger.info(f"Ban: {target.first_name} ({target.id}) — {reason}")
+    await set_banned(user_id=target.id, banned=True)
 
 @admin_only
 async def mute_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -59,3 +61,24 @@ async def mute_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🚫 {target.first_name} foi silenciado por {duração} minutos. Motivo: {motivo}")
     await log_action("mute", update.effective_user.id, target.id, motivo)
     logger.info(f"Mute: {target.first_name} ({target.id}) — {duração}min — {motivo}")
+
+@admin_only
+async def info_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.reply_to_message:
+        await update.message.reply_text("↩️ Responda a mensagem do usuário que deseja pegar as informações.")
+        return
+
+    target = update.message.reply_to_message.from_user
+    user = await get_user(target.id)
+
+    if user is not None:
+        banido = "Sim" if user[3] == 1 else "Não"
+        await update.message.reply_text(
+            f"👤 Informações de {target.first_name}\n"
+            f"ID: {user[0]}\n"
+            f"Username: {user[1]}\n"
+            f"Avisos: {user[2]}/3\n"
+            f"Banido: {banido}"
+        )
+    else:
+        await update.message.reply_text(f"Nenhum histórico encontrado para {target.first_name}.")
