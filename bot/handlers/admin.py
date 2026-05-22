@@ -1,8 +1,9 @@
-from telegram import Update
+from telegram import Update, ChatPermissions
 from telegram.ext import ContextTypes
 from bot.database import upsert_user, add_warn, log_action
 from bot.utils.helpers import admin_only
 from loguru import logger
+from datetime import datetime
 
 @admin_only
 async def warn_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -15,9 +16,7 @@ async def warn_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     warns = await add_warn(target.id)
     await log_action("warn", update.effective_user.id, target.id)
 
-    await update.message.reply_text(
-        f"⚠️ {target.first_name} recebeu uma advertência. Total: {warns}/3"
-    )
+    await update.message.reply_text(f"⚠️ {target.first_name} recebeu uma advertência. Total: {warns}/3")
     logger.info(f"Warn: {target.first_name} ({target.id}) — {warns}/3")
 
     if warns >= 3:
@@ -40,3 +39,23 @@ async def ban_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"🔨 {target.first_name} foi banido. Motivo: {reason}")
     logger.info(f"Ban: {target.first_name} ({target.id}) — {reason}")
+
+@admin_only
+async def mute_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.reply_to_message:
+        await update.message.reply_text("↩️ Responda a mensagem do usuário que deseja silenciar.")
+        return
+
+    agora = datetime.now()
+    target = update.message.reply_to_message.from_user
+    duração = context.args[0] if context.args else "10"
+    motivo = " ".join(context.args[1:]) if len(context.args) > 1 else "Sem motivo"
+
+    await update.message.chat.restrict_member(
+        target.id,
+        permissions=ChatPermissions(can_send_messages=False),
+        until_date=int(agora.timestamp()) + int(duração) * 60
+    )
+    await update.message.reply_text(f"🚫 {target.first_name} foi silenciado por {duração} minutos. Motivo: {motivo}")
+    await log_action("mute", update.effective_user.id, target.id, motivo)
+    logger.info(f"Mute: {target.first_name} ({target.id}) — {duração}min — {motivo}")
