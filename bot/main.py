@@ -1,7 +1,8 @@
-from telegram.ext import ApplicationBuilder, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 from bot.config import BOT_TOKEN
 from bot.database import init_db
 from bot.handlers.welcome import welcome_handler
+from bot.handlers.admin import warn_handler, ban_handler
 from loguru import logger
 
 async def post_init(app):
@@ -15,10 +16,9 @@ def main():
         .build()
     )
 
-    app.add_handler(MessageHandler(
-        filters.StatusUpdate.NEW_CHAT_MEMBERS,
-        welcome_handler
-    ))
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_handler))
+    app.add_handler(CommandHandler("warn", warn_handler))
+    app.add_handler(CommandHandler("ban", ban_handler))
 
     logger.info("Bot iniciado.")
     app.run_polling()
