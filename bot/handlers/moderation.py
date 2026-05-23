@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 from telegram import ChatPermissions
 from bot.database import log_action
 from loguru import logger
+import re
 
 # Memória temporária — reseta quando o bot reinicia
 message_tracker = defaultdict(list)
@@ -38,3 +39,21 @@ async def anti_flood(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message_tracker[user.id].clear()
         await log_action("mute_flood", 0, user.id, "anti-flood")
         logger.info(f"Flood detectado: {user.first_name} ({user.id})")
+    await anti_link(update, context)
+
+async def anti_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agora = datetime.now()
+    if not update.message or not update.effective_user:
+        return
+
+    user = update.effective_user
+    mensagem = update.message.text
+    url = re.compile(r'https?://|www\.|t\.me/')
+
+    if url.search(mensagem):
+        await update.message.chat.restrict_member(
+            user.id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=int(agora.timestamp()) + 500
+        )  
+        await update.message.delete()
